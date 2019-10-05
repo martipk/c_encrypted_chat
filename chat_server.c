@@ -137,7 +137,7 @@ int main(void) {
             continue;
         }
 
-        // Is it the original socket? Create a new connection ...
+        // Seting up new connections
         if (FD_ISSET(sock_fd, &listen_fds)) {
             int client_fd = setup_new_client(sock_fd, usernames);
             if (client_fd < 0) {
@@ -161,18 +161,17 @@ int main(void) {
             }
         }
 
-        // Next, check the clients.
-        // NOTE: We could do some tricks with nready to terminate this loop early.
+        // Verify the Clients' status
         for (int index = 0; index < MAX_CONNECTIONS; index++) {
             if (usernames[index].sock_fd > -1 && FD_ISSET(usernames[index].sock_fd, &listen_fds)) {
-                // Note: never reduces max_fd
+                // Note: never reducing max_fd which means MAX_CONNECTIONS refers to all time connections 
+                // not just at the time. If we want to keep the server running we should either increase 
+                // MAX_CONNECTIONS or create a function to find max fd every time
                 int client_closed = read_from(index, usernames);
                 if (client_closed > 0) {
                     FD_CLR(client_closed, &all_fds);
                     close(client_closed);
                     printf("[Client %d] Disconnected.\n", index + 1);
-                } else {
-                    //printf("[Client %d] Sent a Message.\n", index + 1);
                 }
             }
         }
