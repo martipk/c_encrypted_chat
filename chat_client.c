@@ -9,8 +9,9 @@
 #ifndef PORT
   #define PORT 50001
 #endif
-#define BUF_SIZE 128
+#define BUF_SIZE 512
 #define IP "127.0.0.1"
+#define ENCRYPTION_MODE "-aes-256-cbc"
 
 int main(void) {
     char username[BUF_SIZE+1];
@@ -29,8 +30,8 @@ int main(void) {
     // echo that returns. Exit when stdin is closed.
     char buf[BUF_SIZE + 1];
     char msg[BUF_SIZE + 1];
-	char enc[257];
-	char dec[257];
+	char enc[1025];
+	char dec[1025];
 
     fd_set fdset, fdall;
 
@@ -68,7 +69,7 @@ int main(void) {
 
             // encrypt message before sending
 
-    		snprintf(enc, 100, "echo '%s' | openssl enc -a -e -aes-256-cbc -k %s", msg, KEY);
+    		snprintf(enc, 1024, "echo '%s' | openssl enc -a -e %s -k %s", msg, ENCRYPTION_MODE, KEY);
 
     		FILE *fp = popen(enc, "r");
 			while (fgets(msg, BUF_SIZE, fp) != NULL) {
@@ -97,7 +98,7 @@ int main(void) {
 	            	exit(0);
 	            }
         	} else { // if non-server command decrypt it
-        		snprintf(dec, 100, "echo '%s' | openssl enc -a -d -aes-256-cbc -k %s", buf, KEY);
+        		snprintf(dec, 1024, "echo '%s' | openssl enc -a -d %s -k %s", buf, ENCRYPTION_MODE, KEY);
         		FILE *fp = popen(dec, "r");
 				while (fgets(msg, BUF_SIZE, fp) != NULL) {
 					printf("\033[1m%s\033[0m", msg);

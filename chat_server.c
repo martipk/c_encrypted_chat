@@ -17,7 +17,7 @@
 #endif
 #define MAX_BACKLOG 5
 #define MAX_CONNECTIONS 4
-#define BUF_SIZE 128
+#define BUF_SIZE 2048
 
 
 struct sockname {
