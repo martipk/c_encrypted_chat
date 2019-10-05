@@ -1,9 +1,8 @@
 # c_encrypted_chat
-----------------------------------------------------
 
 ## Encrypted Chat System in C
 
-Chat System where the messages are encrypted locally from one Client, sent through an intermidiate server node, and decrypted at arival by the other Client, thus securing the connection from potential attacks of the server, or package sniffers.
+Chat System where the messages are encrypted locally from one Client, sent through an intermidiate server node, and decrypted at arival by the other Client, thus securing the connection from potential attacks of the server, or package sniffers. I am using symmetric key encryption since both Clients are using the same key.
 
 ## Usage:
 
