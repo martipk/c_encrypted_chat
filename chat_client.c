@@ -10,15 +10,20 @@
   #define PORT 50001
 #endif
 #define BUF_SIZE 128
-#define KEY "hello"
+#define IP "127.0.0.1"
 
 int main(void) {
     char username[BUF_SIZE+1];
     printf("Enter Username: ");
-    //read(STDIN_FILENO, username, BUF_SIZE+1);
     scanf("%s", username);
+
+    char KEY[BUF_SIZE+1];
+    printf("Enter Key: ");
+    scanf("%s", KEY);
     printf("\n");
-    int sock_fd = connect_to_server(PORT, "127.0.0.1");
+
+    // Initialize connection
+    int sock_fd = connect_to_server(PORT, IP);
 
     // Read input from the user, send it to the server, and then accept the
     // echo that returns. Exit when stdin is closed.
@@ -26,7 +31,6 @@ int main(void) {
     char msg[BUF_SIZE + 1];
 	char enc[257];
 	char dec[257];
-    //write(sock_fd, username, strlen(username));
 
     fd_set fdset, fdall;
 
@@ -51,6 +55,7 @@ int main(void) {
                 break;
             }
             buf[num_read] = '\0';
+
             // This fixes the fact that stdout goes back into stdin
             const char delim[2] = "\n";
             char *rest;
@@ -67,12 +72,11 @@ int main(void) {
 
     		FILE *fp = popen(enc, "r");
 			while (fgets(msg, BUF_SIZE, fp) != NULL) {
-				//printf("command: %s", msg);
 				continue;				
 			}
 			pclose(fp);
 
-			// write message encoded message to server
+			// write encoded message to server
 
             int num_written = write(sock_fd, msg, strlen(msg));
             if (num_written != strlen(msg)) {
@@ -82,12 +86,12 @@ int main(void) {
             }
         }
 
-        //read from server
+        // Read from server
         if (FD_ISSET(sock_fd, &fdset)) {
             int num_read = read(sock_fd, buf, BUF_SIZE);
             buf[num_read] = '\0';
 
-            if (strncmp(buf, "[SERVER]", 8) == 0) { // if server command dont decrypt since its plaintext
+            if (strncmp(buf, "[SERVER]", 8) == 0) { // if server command, dont decrypt since its plaintext
             	printf("%s", buf);
 	            if (strncmp(buf, "[SERVER] Shutdown.", 18) == 0) {
 	            	exit(0);
@@ -97,7 +101,6 @@ int main(void) {
         		FILE *fp = popen(dec, "r");
 				while (fgets(msg, BUF_SIZE, fp) != NULL) {
 					printf("\033[1m%s\033[0m", msg);
-					continue;
 				}
 				pclose(fp);
 	        }
