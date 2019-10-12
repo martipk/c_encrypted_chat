@@ -15,8 +15,8 @@
 #ifndef PORT
   #define PORT 50001
 #endif
-#define MAX_BACKLOG 5
-#define MAX_CONNECTIONS 4
+#define MAX_BACKLOG 16
+#define MAX_CONNECTIONS 20
 #define BUF_SIZE 2048
 
 
@@ -68,10 +68,12 @@ int setup_new_client(int fd, struct sockname *usernames) {
 int read_from(int client_index, struct sockname *usernames) {
     int fd = usernames[client_index].sock_fd;
     char buf[BUF_SIZE + 1];
+    char print_buf[BUF_SIZE + 1];
 
     int num_read = read(fd, buf, BUF_SIZE);
     buf[num_read] = '\0';
-    printf("[Client %d] Sent a Message: %s", client_index, buf);
+    strncpy(print_buf, buf, strlen(buf)-1);
+    printf("[Client %d] Sent a Message: %s", client_index+1, print_buf);
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
         if (usernames[i].sock_fd != -1) {
             if (num_read == 0 || write(usernames[i].sock_fd, buf, strlen(buf)) != strlen(buf)) {
@@ -152,11 +154,11 @@ int main(void) {
             snprintf(msg1, BUF_SIZE, "[SERVER] Accepted your Connection.\r\n");
             for (int i = 0; i < MAX_CONNECTIONS; i++) {
                 if (usernames[i].sock_fd != -1) {
-                	if (usernames[i].sock_fd == client_fd) {
-                		write(usernames[i].sock_fd, msg1, strlen(msg1));
-                	} else {
-                		write(usernames[i].sock_fd, msg, strlen(msg));
-                	}
+                    if (usernames[i].sock_fd == client_fd) {
+                        write(usernames[i].sock_fd, msg1, strlen(msg1));
+                    } else {
+                        write(usernames[i].sock_fd, msg, strlen(msg));
+                    }
                 }
             }
         }

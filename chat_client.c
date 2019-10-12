@@ -14,6 +14,7 @@
 #define ENCRYPTION_MODE "-aes-256-cbc"
 
 int main(void) {
+
     char username[BUF_SIZE+1];
     printf("Enter Username: ");
     scanf("%s", username);
@@ -30,8 +31,10 @@ int main(void) {
     // echo that returns. Exit when stdin is closed.
     char buf[BUF_SIZE + 1];
     char msg[BUF_SIZE + 1];
-	char enc[1025];
-	char dec[1025];
+    char msg2[BUF_SIZE*2];
+    char msg3[BUF_SIZE*2];
+    char enc[BUF_SIZE*3];
+    char dec[BUF_SIZE*3];
 
     fd_set fdset, fdall;
 
@@ -39,6 +42,8 @@ int main(void) {
 
     FD_SET(sock_fd, &fdall);
     FD_SET(fileno(stdin), &fdall);
+
+    close(2); // closing stderr to remove openssl warnings
 
     while (1) {
 
@@ -57,30 +62,37 @@ int main(void) {
             }
             buf[num_read] = '\0';
 
-            // This fixes the fact that stdout goes back into stdin
-            const char delim[2] = "\n";
+            // Clearly outline where the message ends
+            const char delim[3] = "\r\n";
             char *rest;
-           	char *text = strtok_r(buf, delim, &rest);
+            char *text = strtok_r(buf, delim, &rest);
             if ((rest != NULL) && (rest[0] != '\0')) {
-            	text = rest;
+                text = rest;
             }
 
-            snprintf(msg, BUF_SIZE, "[%s]: %s\n", username, text); 
+            snprintf(msg, BUF_SIZE, "[%s]: %s", username, text);
+            if (text == NULL) // Check if message is empty and dont send the text, since text will be "(null)"
+                snprintf(msg, BUF_SIZE, "[%s]: ", username);
 
             // encrypt message before sending
+            snprintf(enc, BUF_SIZE*2, "echo '%s' | openssl enc -a -e %s -k %s", msg, ENCRYPTION_MODE, KEY); 
+            // tr removes trailing newline from cipher text in stdout of commandline
 
-    		snprintf(enc, 1024, "echo '%s' | openssl enc -a -e %s -k %s", msg, ENCRYPTION_MODE, KEY);
+            memset(msg2, 0, BUF_SIZE*2);
+            FILE *fp = popen(enc, "r");
+            while (fgets(msg, BUF_SIZE, fp) != NULL) {
+                //printf("CIPH:*%s*\n", msg);
+                strncat(msg2, msg, strlen(msg));
+            }
+            pclose(fp);
+            //printf("CIPHERS:*%s*\n", msg2);
 
-    		FILE *fp = popen(enc, "r");
-			while (fgets(msg, BUF_SIZE, fp) != NULL) {
-				continue;				
-			}
-			pclose(fp);
+            snprintf(msg3, BUF_SIZE*2, "%s\r\n", msg2);
 
-			// write encoded message to server
+            //write encoded message to server
 
-            int num_written = write(sock_fd, msg, strlen(msg));
-            if (num_written != strlen(msg)) {
+            int num_written = write(sock_fd, msg3, strlen(msg3));
+            if (num_written != strlen(msg3)) {
                 perror("client: write");
                 close(sock_fd);
                 exit(1);
@@ -90,21 +102,25 @@ int main(void) {
         // Read from server
         if (FD_ISSET(sock_fd, &fdset)) {
             int num_read = read(sock_fd, buf, BUF_SIZE);
-            buf[num_read] = '\0';
+            buf[num_read] = '\0'; 
 
             if (strncmp(buf, "[SERVER]", 8) == 0) { // if server command, dont decrypt since its plaintext
-            	printf("%s", buf);
-	            if (strncmp(buf, "[SERVER] Shutdown.", 18) == 0) {
-	            	exit(0);
-	            }
-        	} else { // if non-server command decrypt it
-        		snprintf(dec, 1024, "echo '%s' | openssl enc -a -d %s -k %s", buf, ENCRYPTION_MODE, KEY);
-        		FILE *fp = popen(dec, "r");
-				while (fgets(msg, BUF_SIZE, fp) != NULL) {
-					printf("\033[1m%s\033[0m", msg);
-				}
-				pclose(fp);
-	        }
+                printf("%s", buf);
+                if (strncmp(buf, "[SERVER] Shutdown.", 18) == 0) {
+                    exit(0);
+                }
+            } else {
+                snprintf(dec, BUF_SIZE*2, "echo '%s' | openssl enc -a -d %s -k %s", buf, ENCRYPTION_MODE, KEY);
+                FILE *fp = popen(dec, "r");
+                int x = 0; // Allows 2 sets of clients to communcated without disruption
+                while (fgets(msg, BUF_SIZE, fp) != NULL) {
+                    if((strncmp(msg, "[", 1) == 0) || (x > 0)) { // x needed incase the message send in more than one piece
+                        printf("\033[1m%s\033[0m", msg);
+                        x++;
+                    }
+                }
+                pclose(fp);
+            }
         }
     }
 
